@@ -14,16 +14,17 @@ import org.apache.hadoop.util.ToolRunner;
 public class SimpleRowCounter extends Configured implements Tool {
   @Override
   public int run(String[] args) throws Exception {
-	 String inputPath = args[0];
-	 DataLoader dataLoader=new DataLoader();
-	 //dataLoader.loadData(args[0]);
-	 dataLoader.loadData("./data/dataset.txt");
-	 /* 
-    if (args.length != 1) {
-      System.err.println("Usage: SimpleRowCounter <tablename>");
+  if (args.length != 2) {
+      System.err.println("Only 2 args accepted");
       return -1;
     }
-    */
+  	 String inputPath = args[0];
+	 DataLoader dataLoader=new DataLoader();
+	 dataLoader.setNumberOfClusters(args[1]);
+	 dataLoader.loadData(args[0]);
+	 JobRunner jobRunner = new JobRunner();
+	 jobRunner.setNumberOfClusters(args[1]);
+	 jobRunner.runJob();
     return -1;
   }
 

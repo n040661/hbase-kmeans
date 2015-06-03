@@ -1,6 +1,5 @@
 import java.io.IOException;
 import java.util.StringTokenizer;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -70,7 +69,10 @@ public class DataLoader {
 	           FileInputFormat.setInputPaths(jobData, inputPath);  
 	           FileOutputFormat.setOutputPath(jobData,new Path(outputPath));
 	           HFileOutputFormat.configureIncrementalLoad(jobData, dataHTable);
-	           jobData.waitForCompletion(true);
+	           boolean b=jobData.waitForCompletion(true);
+				if (!b) {
+					throw new IOException("error with job!");
+				}
 	           createCenterTable(admin, dataFamily);
 	           return -1;
 		  }
@@ -134,10 +136,14 @@ public class DataLoader {
 	                HTable hTable = new HTable(conf, DataTableName);
 	                hTable.put(HPut);
 	           }   
-	      }	     
+	      }
+		  public void setNumberOfClusters(String numOfClusters) {
+			numberOfClusters=Integer.parseInt(numOfClusters);
+		  }
 	      private String DatasetInputPath;
 	      private static String DataTableName="data";
 	      private static String CenterTableName="center";
 	      private static int gcounter=0;
-	      private static int numberOfClusters=4;
+	      private static int numberOfClusters;
+		
 }
