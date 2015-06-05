@@ -1,4 +1,8 @@
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.StringTokenizer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -32,6 +36,10 @@ import org.apache.hadoop.hbase.client.Scan;
  *
  */
 public class DataLoader {
+	/**
+	 * Used to load dataset and initial cluster centers into 2 different HBase tables
+	 * 
+	 */
 		  public void setInputPath(String input){
 			  DatasetInputPath=input;
 		  }
@@ -42,7 +50,6 @@ public class DataLoader {
 		    	  tableDescriptor.addFamily(new HColumnDescriptor(family[i]));  
 		      }
 		      admin.createTable(tableDescriptor);
-		      System.out.println("Table created: "+tableName);
 		  }
 		  @SuppressWarnings("deprecation")
 		public int loadData(String input) throws IOException, ClassNotFoundException, InterruptedException{
@@ -69,9 +76,10 @@ public class DataLoader {
 	           FileInputFormat.setInputPaths(jobData, inputPath);  
 	           FileOutputFormat.setOutputPath(jobData,new Path(outputPath));
 	           HFileOutputFormat.configureIncrementalLoad(jobData, dataHTable);
+	           
 	           boolean b=jobData.waitForCompletion(true);
 				if (!b) {
-					throw new IOException("error with job!");
+					throw new IOException("Error with loading dataset into table!");
 				}
 	           createCenterTable(admin, dataFamily);
 	           return -1;
@@ -82,7 +90,6 @@ public class DataLoader {
 	          HTable datatable = new HTable(HBaseConfiguration.create(), DataTableName);
 	          HTable centertable = new HTable(HBaseConfiguration.create(), CenterTableName);
 	          Scan scan = new Scan();
-	          scan.setCaching(20);
 	          ResultScanner scanner = datatable.getScanner(scan);
 	          for (int i=0;i<numberOfClusters;i++) {
 	        	  Result result = scanner.next();
@@ -113,15 +120,15 @@ public class DataLoader {
 			
 		}
 		public static class BulkLoadMap extends Mapper<LongWritable, Text, ImmutableBytesWritable, Put> {
-			   public static enum Counters { ROWS }
+			/**
+			 * Mapreduce job to load dataset into table
+			 */
+			   public static enum Counters { ROWNUMBER }
 	           public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {        
-	        	    context.getCounter(Counters.ROWS).increment(1);
+	        	    context.getCounter(Counters.ROWNUMBER).increment(1);
 	        	   	String[] column = new String[10];
-	                column = value.toString().split("\t");
-	                String skey=Long.toString(key.get());
-	                gcounter++;
-	                //ImmutableBytesWritable HKey = new ImmutableBytesWritable(Bytes.toBytes(skey)); 
-	                Put HPut = new Put(Bytes.toBytes(Integer.toString(gcounter))); 
+	                column = value.toString().split("\\s");
+	                Put HPut = new Put(Bytes.toBytes(key.toString())); 
 	                HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X1"), Bytes.toBytes(column[0]));  
 	                HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X5"), Bytes.toBytes(column[4]));  
 	                HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X6"), Bytes.toBytes(column[5]));  
@@ -135,6 +142,7 @@ public class DataLoader {
 	                Configuration conf = HBaseConfiguration.create(); 
 	                HTable hTable = new HTable(conf, DataTableName);
 	                hTable.put(HPut);
+	                hTable.close();
 	           }   
 	      }
 		  public void setNumberOfClusters(String numOfClusters) {
@@ -143,7 +151,6 @@ public class DataLoader {
 	      private String DatasetInputPath;
 	      private static String DataTableName="data";
 	      private static String CenterTableName="center";
-	      private static int gcounter=0;
 	      private static int numberOfClusters;
 		
 }
