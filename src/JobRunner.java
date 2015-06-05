@@ -56,19 +56,19 @@ public class JobRunner {
 				scan.setCaching(800);
 				scan.setCacheBlocks(false);  
 				TableMapReduceUtil.initTableMapperJob(
-				  "data",        // input HBase table name
-				  scan,             // Scan instance to control CF and attribute selection
-				  JobRunner.KMeansMapper.class,   // mapper
-				  Text.class,             // mapper output key
-				  Text.class,             // mapper output value
-				  job);
+						"data",        // input HBase table name
+						scan,             // Scan instance to control CF and attribute selection
+						JobRunner.KMeansMapper.class,   // mapper
+						Text.class,             // mapper output key
+						Text.class,             // mapper output value
+						job);
 				job.setReducerClass(JobRunner.KMeansReducer.class);
 				String intermediatePath="intermediatePath";
 				deleteOutputDirectoryIfExists(config, intermediatePath);
 				FileOutputFormat.setOutputPath(job, new Path(intermediatePath));
 				job.setOutputKeyClass(Text.class);
 				job.setOutputValueClass(Text.class);
-			    job.setOutputFormatClass(TextOutputFormat.class);
+				job.setOutputFormatClass(TextOutputFormat.class);
 				boolean b=job.waitForCompletion(true);
 				if (!b) {
 					throw new IOException("error with job!");
@@ -76,17 +76,17 @@ public class JobRunner {
 				long reducerCounterValue=job.getCounters().findCounter(JobRunner.KMeansReducer.Counters.UPDATECENTER).getValue();
 				keepIterating=reducerCounterValue>0;
 			}
-				System.out.println("Jobs Completed");
-	}
-	catch (Exception e) {
-		e.printStackTrace();
-	}
+			System.out.println("Jobs Completed");
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	private static void deleteOutputDirectoryIfExists(Configuration conf, String outputPath) throws IOException {
-  	  FileSystem fs = FileSystem.get(conf);
-  	  if(fs.exists(new Path(outputPath))){
-  		  fs.delete(new Path(outputPath),true);
-  		}
+		FileSystem fs = FileSystem.get(conf);
+		if(fs.exists(new Path(outputPath))){
+			fs.delete(new Path(outputPath),true);
+		}
 	}
 	public static class KMeansMapper extends TableMapper<Text, Text> 
 	{
@@ -109,12 +109,12 @@ public class JobRunner {
 		@Override
 		protected void map(ImmutableBytesWritable key, Result value,
 				org.apache.hadoop.mapreduce.Mapper.Context context)
-				throws IOException, InterruptedException {
+						throws IOException, InterruptedException {
 			String row=buildRow(value);
 			int clusterAssignment=assignCluster(row,clusterCenters);
 			context.write(new Text(Integer.toString(clusterAssignment)), new Text(row));
 		}
-		
+
 		private static int  assignCluster(String row, List<String> clusterCenters) {
 			double[] distances=new double [numberOfClusters];
 			for (int i=0;i<numberOfClusters;i++){
@@ -122,13 +122,13 @@ public class JobRunner {
 			}
 			double d= Double.POSITIVE_INFINITY;
 			int index=0;
-		    for(int i = 0; i < distances.length; i++){
-		        if(distances[i] < d) {
-		        	d = distances[i];
-		            index = i;
-		        }
-		    }
-		    return index+1;
+			for(int i = 0; i < distances.length; i++){
+				if(distances[i] < d) {
+					d = distances[i];
+					index = i;
+				}
+			}
+			return index+1;
 		}
 
 		private static double computeEuclideanDistance(String row,
@@ -136,7 +136,7 @@ public class JobRunner {
 			String clusterCenter=clusterCenters.get(i);
 			List<Double> rowVector = parseString(row);
 			List<Double> clusterVector = parseString(clusterCenter);
-			
+
 			double distance=0;
 			for (int j=0;j<rowVector.size();j++){
 				distance=distance+Math.pow((rowVector.get(j)-clusterVector.get(j)),2.0);
@@ -161,17 +161,17 @@ public class JobRunner {
 		@Override
 		protected void cleanup(
 				org.apache.hadoop.mapreduce.Mapper.Context context)
-				throws IOException, InterruptedException {
+						throws IOException, InterruptedException {
 			super.cleanup(context);
 		}
 	}
 	public static class KMeansReducer
-    extends TableReducer<Text,Text,Text> {
-		 public static enum Counters { UPDATECENTER }
+	extends TableReducer<Text,Text,Text> {
+		public static enum Counters { UPDATECENTER }
 		@Override
 		public void reduce(Text key,  Iterable<Text> values,
-                Context context
-                ) throws IOException, InterruptedException {
+				Context context
+				) throws IOException, InterruptedException {
 			List<String> oldClusterCenters = new ArrayList<String>();
 			HTable Table = new HTable(HBaseConfiguration.create(), "center");
 			ResultScanner centerTableScanner = Table.getScanner(new Scan());
@@ -207,25 +207,25 @@ public class JobRunner {
 				newClusterCenter.add(tempHolder/numberOfRows);
 			}
 			Put HPut = new Put(Bytes.toBytes(key.toString())); 
-            HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X1"), Bytes.toBytes(Double.toString(newClusterCenter.get(0))));  
-            HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X5"), Bytes.toBytes(Double.toString(newClusterCenter.get(1))));  
-            HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X6"), Bytes.toBytes(Double.toString(newClusterCenter.get(2))));  
-            HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("Y1"), Bytes.toBytes(Double.toString(newClusterCenter.get(3))));  
-            HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("Y2"), Bytes.toBytes(Double.toString(newClusterCenter.get(4))));  
-            HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X2"), Bytes.toBytes(Double.toString(newClusterCenter.get(5))));  
-            HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X3"), Bytes.toBytes(Double.toString(newClusterCenter.get(6))));  
-            HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X4"), Bytes.toBytes(Double.toString(newClusterCenter.get(7))));  
-            HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X7"), Bytes.toBytes(Double.toString(newClusterCenter.get(8))));  
-            HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X8"), Bytes.toBytes(Double.toString(newClusterCenter.get(9)))); 
-            Configuration conf = HBaseConfiguration.create(); 
-            HTable hTable = new HTable(conf, "center");
-            hTable.put(HPut);
-            double distance=computeEuclideanDistance(oldClusterCenters, newClusterCenter);
-            if (distance>0.01){
-            	context.getCounter(Counters.UPDATECENTER).increment(1);
-            }
+			HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X1"), Bytes.toBytes(Double.toString(newClusterCenter.get(0))));  
+			HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X5"), Bytes.toBytes(Double.toString(newClusterCenter.get(1))));  
+			HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("X6"), Bytes.toBytes(Double.toString(newClusterCenter.get(2))));  
+			HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("Y1"), Bytes.toBytes(Double.toString(newClusterCenter.get(3))));  
+			HPut.add(Bytes.toBytes("Area"), Bytes.toBytes("Y2"), Bytes.toBytes(Double.toString(newClusterCenter.get(4))));  
+			HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X2"), Bytes.toBytes(Double.toString(newClusterCenter.get(5))));  
+			HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X3"), Bytes.toBytes(Double.toString(newClusterCenter.get(6))));  
+			HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X4"), Bytes.toBytes(Double.toString(newClusterCenter.get(7))));  
+			HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X7"), Bytes.toBytes(Double.toString(newClusterCenter.get(8))));  
+			HPut.add(Bytes.toBytes("Property"), Bytes.toBytes("X8"), Bytes.toBytes(Double.toString(newClusterCenter.get(9)))); 
+			Configuration conf = HBaseConfiguration.create(); 
+			HTable hTable = new HTable(conf, "center");
+			hTable.put(HPut);
+			double distance=computeEuclideanDistance(oldClusterCenters, newClusterCenter);
+			if (distance>0.01){
+				context.getCounter(Counters.UPDATECENTER).increment(1);
 			}
-			
+		}
+
 		private static List<Double> parseString(String row) {
 			String[] tokens=row.split("\\s");
 			List<Double> rowVector= new ArrayList<Double>();
@@ -237,7 +237,7 @@ public class JobRunner {
 	}
 	public static void setNumberOfClusters(String numOfClusters) {
 		numberOfClusters=Integer.parseInt(numOfClusters);
-	  }
+	}
 	private static int numberOfClusters;
 	private static List<String> clusterCenters = new ArrayList<String>();
 	private static double computeEuclideanDistance(List<String> oldClusterCenters,
